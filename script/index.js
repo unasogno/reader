@@ -1,6 +1,6 @@
 $(document).ready(function() {
   $("#load").click(function() {
-    var view = new TaskListView("#tasks");
+    var view = new TaskListView("#tasks", TaskOperationView);
     var controller = new TaskListController(view);
     var tasks = Task.loadTasks("url:None");
     controller.load(tasks);
