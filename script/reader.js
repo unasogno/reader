@@ -40,26 +40,41 @@ var Task = new Class;
 Task.extend({
     loadTasks : function(serviceUrl) {
         return new Array(
-            new Task(1, "大数据", "http://t.cn/zlPvabt", "1-10", "待认领", "无"),
-            new Task(2, "数学之美", "http://t.cn/zlPvabc", "21-30", "已认领", "某人"),
-            new Task(3, "大数据", "http://t.cn/zlPvabt", "1-10", "待认领", "无"),
-            new Task(4, "数学之美", "http://t.cn/zlPvabc", "21-30", "已认领", "某人"),
-            new Task(5, "我们远去的家园", "http://t.cn/zlh4ksy", "11-20", "待认领", "无")
+            new Task({
+                id: 1, bookName: "大数据", bookUrl: "http://t.cn/zlPvabt", 
+                pages: "1-10", status: "待认领", owner: "无"
+            }),
+            new Task({
+                id: 2, bookName: "数学之美", bookUrl: "http://t.cn/zlPvabc", 
+                pages: "21-30", status: "已认领", owner: "某人"
+            }),
+            new Task({
+                id: 3, bookName: "大数据", bookUrl: "http://t.cn/zlPvabt", 
+                pages: "1-10", status: "待认领", owner: "无"
+            }),
+            new Task({
+                id: 4, bookName: "数学之美", bookUrl: "http://t.cn/zlPvabc", 
+                pages: "21-30", status: "已认领", owner: "某人"
+            }),
+            new Task({
+                id: 5, bookName: "我们远去的家园", bookUrl: "http://t.cn/zlh4ksy",
+                pages: "11-20", status: "待认领", owner: "无"
+            })
         );
     }
 });
 
 Task.include({
-    init : function(id, bookName, bookUrl, pages, status, owner) {
-        this.id = id;
-        this.bookName = bookName;
-        this.bookUrl = bookUrl;
-        this.pages = pages;
-        this.status = status;
-        this.owner = owner;
+    init : function(fields) {
+        this.id = fields.id;
+        this.bookName = fields.bookName;
+        this.bookUrl = fields.bookUrl;
+        this.pages = fields.pages;
+        this.status = fields.status;
+        this.owner = fields.owner;
     },
-    claim : function(serviceUrl) { alert("认领成功"); },
-    upload : function(serviceUrl) { alert("上传完毕"); },
+    claim : function() { alert("认领成功"); },
+    upload : function() { alert("上传完毕"); },
     operations : function() {
         switch(this.status) {
             case "待认领":
