@@ -38,7 +38,7 @@ var Class = function(parent) {
 var Task = new Class;
 
 Task.extend({
-    loadTasks : function(serviceUrl) {
+    loadTasks : function(serviceUrls) {
         return new Array(
             new Task({
                 id: 1, bookName: "´óÊý¾Ý", bookUrl: "http://t.cn/zlPvabt", 
@@ -118,6 +118,7 @@ TaskOperationView.include({
             });
             
             var operation = task.operations()[name];
+            // todo: should wrapper an event like OnRequestOperation
             $(selector).click(function(){
                 operation();
             });
