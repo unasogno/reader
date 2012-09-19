@@ -1,9 +1,9 @@
 $(document).ready(function() {
   $("#load").click(function() {
-    var view = new TaskListView("#tasks", TaskOperationView);
+    var view = new TaskListView("#tasks");
     var controller = new TaskListController(view);
     var tasks = Task.loadTasks("url:None");
-    controller.load(tasks);
+    controller.showTasks(tasks);
   });
   
   $("#reset").click(function() {
@@ -13,4 +13,6 @@ $(document).ready(function() {
         tbody.deleteRow(i);
     }
   });
+  
+  $("#template").hide();
 });

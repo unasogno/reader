@@ -75,6 +75,17 @@ Task.include({
     },
     claim : function() { alert("认领成功"); },
     upload : function() { alert("上传完毕"); },
+    validateOperation : function(operation) {
+        switch(this.status) {
+            case "待认领":
+                return "claim" == operation;
+            case "已认领":
+                return "upload" == operation;
+            case "已完成":
+            default:
+                return false;
+        }
+    },
     operations : function() {
         switch(this.status) {
             case "待认领":
@@ -88,82 +99,47 @@ Task.include({
     }
 });
 
-var TaskOperationView = new Class;
-TaskOperationView.extend({
-    icon : function(name) {
-        return {
-            "认领" : "ui-icon-flag",
-            "上传" : "ui-icon-circle-arrow-n"
-        }[name];
-    }
-});
-
-TaskOperationView.include({
-    init : function(container) { 
-        this.container = container;
-    },
-    update : function(task) { 
-        this.reset();
-        for (var name in task.operations()){
-            var button = document.createElement("button");
-            var id = task.id + "_" + name;
-            var icon = this.parent.icon(name);
-            button.setAttribute("id", id);
-            this.container.appendChild(button);
-            
-            var selector = "#" + id;
-            $(selector).button({
-                icons : { primary : icon }, 
-                text : name
-            });
-            
-            var operation = task.operations()[name];
-            // todo: should wrapper an event like OnRequestOperation
-            $(selector).click(function(){
-                operation();
-            });
-            
-            $(selector).css({ height: "26px", width: "30px" });
-        }
-    },
-    reset : function() {
-        this.container.innerHTML = "";
-    }
-});
-
 var TaskListView = new Class;
 TaskListView.include({
-    init : function(table, OperationView) { 
+    init : function(table) {
         this.table = table; 
-        this.OperationView = OperationView;
-        this.childViews = [];
     },
-    update : function(tasks) { 
-        this.reset();
-        var tbody = $(this.table)[0];
-        for (var i in tasks) {
-            var row = tbody.insertRow(tbody.rows.length);
-            
-            var name = row.insertCell(0);
-            var a = document.createElement("a");
-            a.href = tasks[i].bookUrl;
-            a.innerHTML = tasks[i].bookName;
-            name.appendChild(a);
-            
-            var pages = row.insertCell(1);
-            pages.innerHTML = tasks[i].pages;
-            
-            var status = row.insertCell(2);
-            status.innerHTML = tasks[i].status;
-            
-            var owner = row.insertCell(3);
-            owner.innerHTML = tasks[i].owner;
-            
-            var operations = row.insertCell(4);
-            var childView = new this.OperationView(operations);
-            this.childViews.push(childView);
-            childView.update(tasks[i]);
-        }
+    addRow : function(task) {
+        var newRow = $("#task-row-template").clone();
+        newRow.attr("id", task.id);
+        
+        var nameLink = newRow.children('#name').children("a");
+        nameLink.html(task.bookName);
+        nameLink.attr("href", task.bookUrl);
+        
+        newRow.children("#pages").html(task.pages);
+        newRow.children("#status").html(task.status);
+        newRow.children("#owner").html(task.owner);
+        
+        var claimButton = newRow.children("#operation").children("#claim");
+        claimButton.button({
+            icons : { primary : "ui-icon-flag" }, 
+            text : false
+        });
+        claimButton.css({ height: "26px", width: "30px" });
+        
+        var uploadButton = newRow.children("#operation").children("#upload");
+        uploadButton.button({
+            icons : { primary : "ui-icon-circle-arrow-n" }, 
+            text : false
+        });
+        uploadButton.css({ height: "26px", width: "30px" });
+        
+        var self = this;
+        // claimButton.click();
+        uploadButton.click(function() {
+            var operation = $(this).attr("id");
+            var rowId = $(this).parent().parent().attr("id");
+            self.trigger(operation, rowId);
+        });
+        
+        newRow.appendTo($(this.table)[0]);
+        return task.id;
     },
     reset : function() {
         var tbody = $(this.table)[0];
@@ -171,14 +147,45 @@ TaskListView.include({
         for (var i = rowCount - 1; i >= 1; i--) {
             tbody.deleteRow(i);
         }
-        this.childViews = [];
+    },
+    addEventListener : function(event, handler) {
+        $(this).bind(event, handler);
+    },
+    removeEventListener : function(event, handler) {
+        $(this).unbind(event, handler);
+    },
+    trigger : function(event, parameters) {
+        $(this).trigger(event, parameters);
     }
 });
 
 var TaskListController = new Class;
 TaskListController.include({
-    init: function(view) { this.view = view; },
+    init: function(view) { 
+        this.view = view; 
+        this.view.addEventListener("upload", this.onUpload);
+    },
     load : function(tasks) { 
         this.view.update(tasks);
+    },
+    showTasks : function(tasks) {
+        this.view.reset();
+        this.taskMap = {};
+        for (var i in tasks) {
+            var task = tasks[i];
+            var rowId = this.view.addRow(task);
+            this.taskMap[rowId] = task;
+        }
+    },
+    onUpload : function(rowId) {
+        var task = this.taskMap[rowId];
+        if (typeof task == undefined) return;
+        alert("uploaded");
+        /*
+        if (!task.validateOperation(operation)) {
+            this.view.error(operation + "操作暂时不能执行");
+            return;
+        }
+        */
     }
 });
