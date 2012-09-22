@@ -35,6 +35,27 @@ var Class = function(parent) {
   return klass;
 };
 
+var PubSub = {
+    subscribe : function(event, handler) {
+        var handlers = this._handlers || (this._handlers = {});
+        (this._handlers[event] || (this._handlers[event] = [])).push(handler);
+        return this;
+    },
+    
+    publish : function(event, handler) {
+        var args = Array.prototype.slice.call(arguments, 0);
+        var event = args.shift();
+        var list, handlers ,i, l;
+        if (!(handlers = this._handlers)) return this;
+        if (!(list = this._handlers[event])) return this;
+        
+        for (i = 0, l = list.length; i < l; i++) {
+            list[i].apply(this, args);
+        }
+        return this;
+    }
+};
+
 var Task = new Class;
 
 Task.extend({
@@ -73,18 +94,15 @@ Task.include({
         this.status = fields.status;
         this.owner = fields.owner;
     },
-    claim : function() { alert("认领成功"); },
-    upload : function() { alert("上传完毕"); },
-    validateOperation : function(operation) {
-        switch(this.status) {
-            case "待认领":
-                return "claim" == operation;
-            case "已认领":
-                return "upload" == operation;
-            case "已完成":
-            default:
-                return false;
-        }
+    claim : function() {
+        if (this.status === "已认领") return false;
+        this.status = "已认领";
+        return true;
+    },
+    upload : function() { 
+        if (this.status === "已完成") return true;
+        this.status = "已完成";
+        return true;
     },
     operations : function() {
         switch(this.status) {
@@ -99,22 +117,46 @@ Task.include({
     }
 });
 
+var Notifier = {
+    info : function(message) {
+        $("#info").html(message);
+        $("#info").dialog();
+    },
+    warn : function(message) {
+        $("#warn").html(message);
+        $("#warn").dialog({
+            modal : true
+        });
+    },
+    error : function(message) {
+        $("#error").html(message);
+        $("#error").dialog({
+            modal : true
+        });
+    }
+};
+
 var TaskListView = new Class;
+TaskListView.include(PubSub);
+TaskListView.include(Notifier);
 TaskListView.include({
     init : function(table) {
         this.table = table; 
+    },
+    refreshRow : function(row, task) {
+        var nameLink = row.children('#name').children("a");
+        nameLink.html(task.bookName);
+        nameLink.attr("href", task.bookUrl);
+        
+        row.children("#pages").html(task.pages);
+        row.children("#status").html(task.status);
+        row.children("#owner").html(task.owner);
     },
     addRow : function(task) {
         var newRow = $("#task-row-template").clone();
         newRow.attr("id", task.id);
         
-        var nameLink = newRow.children('#name').children("a");
-        nameLink.html(task.bookName);
-        nameLink.attr("href", task.bookUrl);
-        
-        newRow.children("#pages").html(task.pages);
-        newRow.children("#status").html(task.status);
-        newRow.children("#owner").html(task.owner);
+        this.refreshRow(newRow, task);
         
         var claimButton = newRow.children("#operation").children("#claim");
         claimButton.button({
@@ -131,15 +173,25 @@ TaskListView.include({
         uploadButton.css({ height: "26px", width: "30px" });
         
         var self = this;
-        // claimButton.click();
-        uploadButton.click(function() {
-            var operation = $(this).attr("id");
+        claimButton.click(function(){ 
+            var event = $(this).attr("id");
             var rowId = $(this).parent().parent().attr("id");
-            self.trigger(operation, rowId);
+            self.publish(event, rowId);
+        });
+        uploadButton.click(function() {
+            var event = $(this).attr("id");
+            var rowId = $(this).parent().parent().attr("id");
+            self.publish(event, rowId);
         });
         
         newRow.appendTo($(this.table)[0]);
         return task.id;
+    },
+    updateTask : function(rowId, task) {
+        var id = "#" + rowId;
+        var row = $(this.table).find(id);
+        
+        this.refreshRow(row, task);
     },
     reset : function() {
         var tbody = $(this.table)[0];
@@ -147,15 +199,6 @@ TaskListView.include({
         for (var i = rowCount - 1; i >= 1; i--) {
             tbody.deleteRow(i);
         }
-    },
-    addEventListener : function(event, handler) {
-        $(this).bind(event, handler);
-    },
-    removeEventListener : function(event, handler) {
-        $(this).unbind(event, handler);
-    },
-    trigger : function(event, parameters) {
-        $(this).trigger(event, parameters);
     }
 });
 
@@ -163,7 +206,9 @@ var TaskListController = new Class;
 TaskListController.include({
     init: function(view) { 
         this.view = view; 
-        this.view.addEventListener("upload", this.onUpload);
+        this.taskMap = null;
+        this.view.subscribe("claim", $.proxy(this.onClaim, this));
+        this.view.subscribe("upload", $.proxy(this.onUpload, this));
     },
     load : function(tasks) { 
         this.view.update(tasks);
@@ -177,15 +222,30 @@ TaskListController.include({
             this.taskMap[rowId] = task;
         }
     },
-    onUpload : function(rowId) {
-        var task = this.taskMap[rowId];
+    onClaim : function(rowId) {
+        var map = this.taskMap;
+        var task = map[rowId];
         if (typeof task == undefined) return;
-        alert("uploaded");
-        /*
-        if (!task.validateOperation(operation)) {
-            this.view.error(operation + "操作暂时不能执行");
-            return;
+        
+        var result = task.claim();
+        if (result) {
+            this.view.updateTask(rowId, task);
+            this.view.info("领取成功");
+        } else {
+            this.view.warn("领取失败，请重试");
         }
-        */
+    },
+    onUpload : function(rowId) {
+        var map = this.taskMap;
+        var task = map[rowId];
+        if (typeof task == undefined) return;
+        
+        var result = task.upload();
+        if (result) {
+            this.view.updateTask(rowId, task);
+            this.view.info("上传完成");
+        } else {
+            this.view.warn("上传失败，请重试");
+        }
     }
 });
