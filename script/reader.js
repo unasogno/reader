@@ -199,13 +199,12 @@ TaskListView.include({
                 self.info("操作取消");
                 return;
             }
-            /*
             $("#upload-form").dialog({ 
                 modal : true,
-                close : function() {}
+                close : function() {
+                    self.publish("uploaded", { rowId : rowId } );
+                }
             });
-            */
-            self.publish("uploaded", { rowId : rowId } );
         });
         
         newRow.appendTo($(this.table)[0]);
@@ -234,8 +233,6 @@ TaskListController.include({
         this.view.subscribe(
             TaskListView.events.claim, $.proxy(this.onClaim, this));
         this.view.subscribe(
-            TaskListView.events.uploading, $.proxy(this.onUploading, this));
-        this.view.subscribe(
             TaskListView.events.uploaded, $.proxy(this.onUploaded, this));
     },
     load : function(tasks) { 
@@ -263,9 +260,6 @@ TaskListController.include({
         } else {
             this.view.warn("领取失败，请重试");
         }
-    },
-    onUploading : function(args) {
-        args.cancel = false;
     },
     onUploaded : function(args) {
         var map = this.taskMap;
