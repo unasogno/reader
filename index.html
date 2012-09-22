@@ -7,11 +7,16 @@
     <script type="text/javascript" src="script/jquery-1.7.2.min.js" ></script>
     <script type="text/javascript" 
             src="script/jquery-ui-1.8.20.min.js" ></script>
-    <script type="text/javascript" src="script/reader.js" charset="gb2312" ></script>
+    <script type="text/javascript" src="script/reader.js" charset="gb2312" >
+    </script>
     <script type="text/javascript" src="script/index.js" ></script>
   </head>
   <body>
     <div id="container" class="ui-widget-content centered">
+      <div id="toolbar" >
+        <button id="reset" >清除数据</button>
+        <button id="refresh" >加载数据</button>
+      </div>
       <table id="tasks" >
         <tr class="ui-widget-header" >
           <th>书名</th>
@@ -21,8 +26,6 @@
           <th>操作</th>
         </tr>
       </table>
-      <button id="load" >加载数据</button>
-      <button id="reset" >清除数据</button>
     </div>
     <div id="template">
         <table id="tasks-template">
@@ -42,6 +45,12 @@
         <div id="info" ></div>
         <div id="warn" ></div>
         <div id="error" ></div>
+    </div>
+    <div id="upload-form" >
+        <form action="POST" >
+            <input type="file" ></input>
+            <input type="submit" value="上传" ></input>
+        </form>
     </div>
   </body>
 </html>

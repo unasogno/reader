@@ -1,3 +1,5 @@
+var ButtonStyle = { height: "26px", width: "32px" };
+
 var Class = function(parent) {
   var klass = function() {
     this.init.apply(this, arguments);
@@ -56,6 +58,19 @@ var PubSub = {
     }
 };
 
+var User = new Class;
+User.extend({
+    getCurrentUser : function() {
+        return "某人";
+    }
+});
+
+var TaskStatus = {
+    open : "待认领",
+    claimed : "已认领",
+    done : "已完成"
+};
+
 var Task = new Class;
 
 Task.extend({
@@ -94,26 +109,16 @@ Task.include({
         this.status = fields.status;
         this.owner = fields.owner;
     },
-    claim : function() {
-        if (this.status === "已认领") return false;
-        this.status = "已认领";
+    claim : function(user) {
+        if (this.status === TaskStatus.claimed) return false;
+        this.owner = user;
+        this.status = TaskStatus.claimed;
         return true;
     },
-    upload : function() { 
-        if (this.status === "已完成") return true;
-        this.status = "已完成";
+    upload : function(data) { 
+        if (this.status === TaskStatus.done) return true;
+        this.status = TaskStatus.done;
         return true;
-    },
-    operations : function() {
-        switch(this.status) {
-            case "待认领":
-                return { "认领" : this.claim };
-            case "已认领":
-                return { "上传" : this.upload };
-            case "已完成":
-            default:
-                return [];
-        }
     }
 });
 
@@ -137,6 +142,15 @@ var Notifier = {
 };
 
 var TaskListView = new Class;
+
+TaskListView.extend({
+    events : { 
+        claim : "claim", 
+        uploading : "uploading", 
+        uploaded : "uploaded"
+    }
+});
+
 TaskListView.include(PubSub);
 TaskListView.include(Notifier);
 TaskListView.include({
@@ -163,25 +177,35 @@ TaskListView.include({
             icons : { primary : "ui-icon-flag" }, 
             text : false
         });
-        claimButton.css({ height: "26px", width: "30px" });
+        claimButton.css(ButtonStyle);
         
         var uploadButton = newRow.children("#operation").children("#upload");
         uploadButton.button({
             icons : { primary : "ui-icon-circle-arrow-n" }, 
             text : false
         });
-        uploadButton.css({ height: "26px", width: "30px" });
+        uploadButton.css(ButtonStyle);
         
         var self = this;
-        claimButton.click(function(){ 
-            var event = $(this).attr("id");
+        claimButton.click(function(){
             var rowId = $(this).parent().parent().attr("id");
-            self.publish(event, rowId);
+            self.publish(TaskListView.events.claim, rowId);
         });
         uploadButton.click(function() {
-            var event = $(this).attr("id");
             var rowId = $(this).parent().parent().attr("id");
-            self.publish(event, rowId);
+            var args = { rowId : rowId, cancel : false };
+            self.publish(TaskListView.events.uploading, args);
+            if (args.cancel) {
+                self.info("操作取消");
+                return;
+            }
+            /*
+            $("#upload-form").dialog({ 
+                modal : true,
+                close : function() {}
+            });
+            */
+            self.publish("uploaded", { rowId : rowId } );
         });
         
         newRow.appendTo($(this.table)[0]);
@@ -207,8 +231,12 @@ TaskListController.include({
     init: function(view) { 
         this.view = view; 
         this.taskMap = null;
-        this.view.subscribe("claim", $.proxy(this.onClaim, this));
-        this.view.subscribe("upload", $.proxy(this.onUpload, this));
+        this.view.subscribe(
+            TaskListView.events.claim, $.proxy(this.onClaim, this));
+        this.view.subscribe(
+            TaskListView.events.uploading, $.proxy(this.onUploading, this));
+        this.view.subscribe(
+            TaskListView.events.uploaded, $.proxy(this.onUploaded, this));
     },
     load : function(tasks) { 
         this.view.update(tasks);
@@ -227,7 +255,8 @@ TaskListController.include({
         var task = map[rowId];
         if (typeof task == undefined) return;
         
-        var result = task.claim();
+        var user = User.getCurrentUser();
+        var result = task.claim(user);
         if (result) {
             this.view.updateTask(rowId, task);
             this.view.info("领取成功");
@@ -235,14 +264,17 @@ TaskListController.include({
             this.view.warn("领取失败，请重试");
         }
     },
-    onUpload : function(rowId) {
+    onUploading : function(args) {
+        args.cancel = false;
+    },
+    onUploaded : function(args) {
         var map = this.taskMap;
-        var task = map[rowId];
+        var task = map[args.rowId];
         if (typeof task == undefined) return;
         
         var result = task.upload();
         if (result) {
-            this.view.updateTask(rowId, task);
+            this.view.updateTask(args.rowId, task);
             this.view.info("上传完成");
         } else {
             this.view.warn("上传失败，请重试");
