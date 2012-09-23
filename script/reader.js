@@ -200,10 +200,11 @@ TaskListView.include({
                 return;
             }
             $("#upload-form").dialog({ 
-                modal : true,
-                close : function() {
+                close : function(event, ui) {
                     self.publish("uploaded", { rowId : rowId } );
-                }
+                },
+                modal : true,
+                width : 360
             });
         });
         
@@ -269,7 +270,7 @@ TaskListController.include({
         var result = task.upload();
         if (result) {
             this.view.updateTask(args.rowId, task);
-            this.view.info("上传完成");
+            // this.view.info("上传完成");
         } else {
             this.view.warn("上传失败，请重试");
         }
